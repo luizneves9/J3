@@ -1,0 +1,9 @@
+venv/
+.venv/
+__pycache__/
+*.csv
+*.xls
+*.xlsx
+Corporativo/
+J3/
+*.pbix
