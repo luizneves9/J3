@@ -2,6 +2,7 @@
 
 import pandas as pd
 import os
+import numpy as np
 
 # --- Definição de diretórios ---
 
@@ -49,6 +50,24 @@ def processamento_totalbus(diretorio_totalbus):
         except Exception as e:
             print(f'SISTEMA: Erro ao consolidar o arquivo.')
 
+    # ajustando o tipo das datas
+    df_totalbus['DATA HORA VENDA'] = pd.to_datetime(df_totalbus['DATA HORA VENDA'], errors='coerce')
+
+    # ajustando o tipo str nas colunas
+    tipo_str = [
+        'EMPRESA', 'STATUS BILHETE', 'AGENCIA ORIGINAL', 'ID TRANSACAO', 'ID TRANSACAO ORIGINAL', 'NOME PASSAGEIRO', 'POLTRONA',
+        'Origem'
+    ]
+
+    tipo = {}
+    tipo.update({col: str for col in tipo_str})
+
+    # ajustando o tipo de valor das colunas
+    df_totalbus['TARIFA'] = df_totalbus['TARIFA'].astype(str).str.replace(',', '.', regex=False).astype(float)
+    df_totalbus['PEDAGIO'] = df_totalbus['PEDAGIO'].astype(str).str.replace(',', '.', regex=False).astype(float)
+    df_totalbus['TAXA_EMB'] = df_totalbus['TAXA_EMB'].astype(str).str.replace(',', '.', regex=False).astype(float)
+    df_totalbus['VALOR MULTA'] = df_totalbus['VALOR MULTA'].astype(str).str.replace(',', '.', regex=False).astype(float)
+
     return df_totalbus
 
 
@@ -84,7 +103,7 @@ def processamento_j3(diretorio_j3):
                 if nome_aba in abas_j3_dados:
                     try:
                         df_aba_filtrado = df_aba[colunas_j3].copy()
-                        df_aba_filtrado['Origem'] = arquivo
+                        df_aba_filtrado['Origem'] = nome_arquivo
 
                         if nome_aba == 'Extrato Pago': df_aba_filtrado['Status'] = 'V'
                         elif nome_aba == 'Extrato Alterados': df_aba_filtrado['Status'] = 'C'
@@ -100,6 +119,43 @@ def processamento_j3(diretorio_j3):
             df_j3 = pd.concat(lista_vazia, ignore_index=True)
         except Exception as e:
             print(f'SISTEMA: Erro ao consolidar o arquivo.')
+
+    # incluindo a empresa
+    empresa_condicao = [
+        df_j3['Origem'].str.contains('VGL', na=False),
+        df_j3['Origem'].str.contains('EPIL', na=False),
+        df_j3['Origem'].str.contains('BS', na=False),
+        df_j3['Origem'].str.contains('ESA', na=False)
+    ]
+
+    empresa_resultado =[
+        'Viação Garcia',
+        'Princesa do Ivaí',
+        'Brasil Sul',
+        'Santo Anjo'
+    ]
+
+    df_j3['Empresa'] = np.select(empresa_condicao, empresa_resultado, pd.NaT)
+
+    # definindo as colunas de datas
+    tipo_data = ['Data Venda', 'Data Cancelamento', 'Data Viagem']
+    for i in tipo_data:
+        df_j3[i] = pd.to_datetime(df_j3[i], errors='coerce')
+
+    # definindo os tipos das colunas
+    tipo_valor = ['Tarifa', 'Seguro', 'Pedágio',
+       'Taxa de Embarque', 'Outros', 'Estorno Tarifa', 'Estorno Taxa',
+       'Estorno Total']
+
+    tipo_str = [
+        'Assento', 'Nome Passageiro', 'Numero Bilhete', 'Origem', 'Status', 'Empresa'
+    ]
+
+    tipos = {}
+    tipos.update({col: float for col in tipo_valor})
+    tipos.update({col: str for col in tipo_str})
+
+    df_j3.astype(tipos)
 
     return df_j3
 
